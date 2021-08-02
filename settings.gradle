@@ -1,0 +1,2 @@
+rootProject.name='LoctekControlCentral'
+include ':app', ':SerialPortLibrary'
