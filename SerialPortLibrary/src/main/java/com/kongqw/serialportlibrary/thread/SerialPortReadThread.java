@@ -2,6 +2,8 @@ package com.kongqw.serialportlibrary.thread;
 
 import android.util.Log;
 
+import com.kongqw.serialportlibrary.SerialPortUtil;
+
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -24,6 +26,11 @@ public abstract class SerialPortReadThread extends Thread {
         Log.d(TAG, "创建串口读取线程  ");
     }
 
+
+    //模拟收到数据
+    public void testReceive(byte[] data){
+        onDataReceived(data);
+    }
     @Override
     public void run() {
         super.run();
@@ -35,8 +42,8 @@ public abstract class SerialPortReadThread extends Thread {
                 }
 
 //                try {
-                //之前出现数据不规则的现象，起先以为是数据没读取完整，进行以下处理，后来发现是升降桌控制盒休眠的问题
-//                    //防止数据不完整，每次读取之前等200ms
+//                之前出现数据不规则的现象，起先以为是数据没读取完整，进行以下处理，后来发现是升降桌控制盒休眠的问题
+                    //防止数据不完整，每次读取之前等200ms
 //                    Thread.sleep(200);
 //                } catch (InterruptedException e) {
 //                    e.printStackTrace();
