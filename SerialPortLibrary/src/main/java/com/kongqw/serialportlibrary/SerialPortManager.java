@@ -5,11 +5,8 @@ import android.os.HandlerThread;
 import android.os.Message;
 import android.util.Log;
 
-import com.kongqw.serialportlibrary.desk.DeskControlCentral;
 import com.kongqw.serialportlibrary.listener.OnOpenSerialPortListener;
 import com.kongqw.serialportlibrary.listener.OnSerialPortDataListener;
-import com.kongqw.serialportlibrary.test.SubDevice1;
-import com.kongqw.serialportlibrary.test.SubDevice2;
 import com.kongqw.serialportlibrary.thread.SerialPortReadThread;
 
 import java.io.File;
@@ -26,8 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * 这里作为公共的收发处理类，
  * 提供：crc检验、数据发送、接收、拼接完整帧的功能
  * 具体的业务逻辑由各个子模块自己实现
- *
- * @see DeskControlCentral
+ * 发送逻辑走这里{@link DataProcessingCenter#setCurrentCommand(String)}
  * <p>
  * SerialPortManager
  */
@@ -41,7 +37,6 @@ public class SerialPortManager extends SerialPort {
     private static final int WHAT_SEND_BYTES = 1;
     public static final long SEND_INTERVAL = 500L;
     private static final SerialPortManager instance = new SerialPortManager();
-    private boolean isBoxResponse = true;
 
     public static SerialPortManager getInstance() {
         return instance;
@@ -164,38 +159,47 @@ public class SerialPortManager extends SerialPort {
             public void handleMessage(Message msg) {
                 try {
                     if (WHAT_SEND_BYTES == msg.what) {//发送数据
-                        byte[] sendBytes = (byte[]) msg.obj;
-                        if(msg.arg1 == 1){
-                            Log.d("控制逻辑", "发送指令  超时重发" + SerialPortUtil.byte2HexString(sendBytes));
-                        }else{
-                            Log.d("控制逻辑", "发送指令  " + SerialPortUtil.byte2HexString(sendBytes));
-                        }
-                        sendCommandList = sendBytes;
-                        mFileOutputStream.write(sendBytes);
-                        //将发送指令加入队列
-                        if (null != mOnSerialPortDataListener) {
-                            for (OnSerialPortDataListener listener : mOnSerialPortDataListener) {
-                                listener.onDataSent(sendBytes);
+                        lock.lock();
+                        try {
+                            byte[] sendBytes = (byte[]) msg.obj;
+                            if (msg.arg1 == 1) {
+                                Log.d("控制逻辑", "发送指令  超时重发" + SerialPortUtil.byte2HexString(sendBytes));
+                            } else {
+                                Log.d("控制逻辑", "发送指令  " + SerialPortUtil.byte2HexString(sendBytes));
                             }
+                            sendCommandList = sendBytes;
+                            mFileOutputStream.write(sendBytes);
+                            //将发送指令加入队列
+                            if (null != mOnSerialPortDataListener) {
+                                for (OnSerialPortDataListener listener : mOnSerialPortDataListener) {
+                                    listener.onDataSent(sendBytes);
+                                }
+                            }
+                            sendEmptyMessageDelayed(WHAT_TIME_OUT, 500);
+                        } finally {
+                            lock.unlock();
                         }
-                        sendEmptyMessageDelayed(WHAT_TIME_OUT, 500);
+
+
                     } else if (WHAT_TIME_OUT == msg.what) {
                         clear();
-                        if (retryTime < 5) {
+                        if (retryTime < 3) {
                             Message m = new Message();
                             m.what = WHAT_SEND_BYTES;
                             m.obj = sendCommandList;
                             m.arg1 = 1;
                             sendMessage(m);
-                            retryTime+=1;
-                            Log.d("控制逻辑","重试");
-                        }else {
-                            isBoxResponse = true;
+                            retryTime += 1;
+                            Log.d("控制逻辑", "重试");
+                        } else {
                             retryTime = 0;
-                            Log.d("控制逻辑","超出重试次数  isBoxResponse = "+isBoxResponse+"  state = "+state);
+                            synchronized (DataProcessingCenter.getInstance().getLock()) {
+                                DataProcessingCenter.getInstance().getLock().notify();
+                            }
+                            Log.d("控制逻辑", "超出重试次数  " + "  state = " + state);
                         }
                     }
-                } catch (IOException e) {
+                } catch (IOException | IllegalMonitorStateException e) {
                     e.printStackTrace();
                 }
             }
@@ -275,30 +279,35 @@ public class SerialPortManager extends SerialPort {
      * @param frameData
      */
     private void onFrameReceived(byte[] frameData) {
-        //如果发送和收到的属于同一设备，则是合法的一次发、收
-        if (frameData[2] == sendCommandList[2] && frameData[3] == sendCommandList[3]) {
-            Log.e("控制逻辑", "收到完整一帧数据 " + SerialPortUtil.byte2HexString(frameData) +"  isBoxResponse = "+isBoxResponse +"  state = "+state);
-            clear();
-            mSendingHandler.removeMessages(WHAT_TIME_OUT);
-            mSendingHandler.removeMessages(WHAT_SEND_BYTES);
-            retryTime = 0;
-            isBoxResponse = true;
-            byte[] body = new byte[frameData.length - 2];//去掉头尾
 
-            for (int i = 0; i < body.length; i++) {
-                body[i] = frameData[i + 1];
-            }
 
-            byte[] bodyWithoutCRC = new byte[body.length - 2];
-            for (int i = 0; i < bodyWithoutCRC.length; i++) {
-                bodyWithoutCRC[i] = body[i];
-            }
-            String str1 = CRC16M.getBufHexStr(body);
-            String str2 = CRC16M.getBufHexStr(CRC16M.getSendBuf(CRC16M.getBufHexStr(bodyWithoutCRC)));
-            if (str1.equalsIgnoreCase(str2)) {
-                if (null != mOnSerialPortDataListener) {
-                    for (OnSerialPortDataListener listener : mOnSerialPortDataListener) {
-                        listener.onDataReceived(frameData);
+        synchronized (DataProcessingCenter.getInstance().getLock()) {
+            //如果发送和收到的属于同一设备，则是合法的一次发、收
+            if (frameData[2] == sendCommandList[2] && frameData[3] == sendCommandList[3]) {
+                Log.e("控制逻辑", "收到完整一帧数据 " + SerialPortUtil.byte2HexString(frameData) + "  " + "  state = " + state);
+                clear();
+                //收到完整的一帧数据的时候要释放锁，不调用notify的话，DataProcessingCenter的线程会一直停在wait那里
+                DataProcessingCenter.getInstance().getLock().notify();
+                mSendingHandler.removeMessages(WHAT_TIME_OUT);
+                mSendingHandler.removeMessages(WHAT_SEND_BYTES);
+                retryTime = 0;
+                byte[] body = new byte[frameData.length - 2];//去掉头尾
+
+                for (int i = 0; i < body.length; i++) {
+                    body[i] = frameData[i + 1];
+                }
+
+                byte[] bodyWithoutCRC = new byte[body.length - 2];
+                for (int i = 0; i < bodyWithoutCRC.length; i++) {
+                    bodyWithoutCRC[i] = body[i];
+                }
+                String str1 = CRC16M.getBufHexStr(body);
+                String str2 = CRC16M.getBufHexStr(CRC16M.getSendBuf(CRC16M.getBufHexStr(bodyWithoutCRC)));
+                if (str1.equalsIgnoreCase(str2)) {
+                    if (null != mOnSerialPortDataListener) {
+                        for (OnSerialPortDataListener listener : mOnSerialPortDataListener) {
+                            listener.onDataReceived(frameData);
+                        }
                     }
                 }
             }
@@ -312,31 +321,18 @@ public class SerialPortManager extends SerialPort {
      * @return 发送是否成功
      */
     public void sendBytes(byte[] sendBytes) {
-        if (state == STATE_BUSY || !isBoxResponse) {
-            Log.e("控制逻辑", "发送线程正忙，请稍候 state = "+state +"  isBoxResponse = "+isBoxResponse);
-            return;
-        }
-        isBoxResponse = false;
-        lock.lock();
-        try {
-            if (null != mFd && null != mFileInputStream && null != mFileOutputStream) {
-                if (0 < sendBytes.length) {
-                    if (null != mSendingHandler) {
-                        Message message = Message.obtain();
-                        message.obj = sendBytes;
-                        message.what = WHAT_SEND_BYTES;
-                        mSendingHandler.sendMessage(message);
-                    }
-
+        if (null != mFd && null != mFileInputStream && null != mFileOutputStream) {
+            if (0 < sendBytes.length) {
+                if (null != mSendingHandler) {
+                    Message message = Message.obtain();
+                    message.obj = sendBytes;
+                    message.what = WHAT_SEND_BYTES;
+                    mSendingHandler.sendMessage(message);
                 }
 
             }
 
-        } finally {
-            lock.unlock();
         }
-
-        return;
     }
 
     /**

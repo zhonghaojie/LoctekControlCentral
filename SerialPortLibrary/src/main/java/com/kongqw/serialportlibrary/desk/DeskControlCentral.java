@@ -3,9 +3,11 @@ package com.kongqw.serialportlibrary.desk;
 import android.os.CountDownTimer;
 import android.util.Log;
 
+import com.kongqw.serialportlibrary.DataProcessingCenter;
 import com.kongqw.serialportlibrary.SerialPortManager;
 import com.kongqw.serialportlibrary.SerialPortUtil;
 import com.kongqw.serialportlibrary.desk.callback.IDeskCallback;
+import com.kongqw.serialportlibrary.desk.callback.IDeskUIListener;
 import com.kongqw.serialportlibrary.listener.OnSerialPortDataListener;
 
 import java.util.Timer;
@@ -19,6 +21,7 @@ public class DeskControlCentral implements OnSerialPortDataListener {
     public static String STATE_RST = "RST";
     public static String STATE_NORMAL = "NORMAL";
     public static String STATE_ERROR = "ERROR";
+    private IDeskUIListener uiListener;
     //升降桌状态
     private String state = "";
     private boolean isStop = true;
@@ -37,14 +40,13 @@ public class DeskControlCentral implements OnSerialPortDataListener {
         return errorCode;
     }
 
-    public void setErrorCode(String errorCode) {
-        this.errorCode = errorCode;
-    }
+
     private static final DeskControlCentral instance = new DeskControlCentral();
 
-    public static DeskControlCentral getInstance(){
+    public static DeskControlCentral getInstance() {
         return instance;
     }
+
     private DeskControlCentral() {
         loadDeskControl();
     }
@@ -67,14 +69,14 @@ public class DeskControlCentral implements OnSerialPortDataListener {
      * 向上
      */
     public void up() {
-        SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_UP));
+        DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_UP);
     }
 
     /**
      * 向下
      */
     public void down() {
-        SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_DOWN));
+        DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_DOWN);
     }
 
     /**
@@ -82,8 +84,8 @@ public class DeskControlCentral implements OnSerialPortDataListener {
      */
     public void stop() {
         isStop = true;
-        Log.i("控制逻辑", "发送停止");
-        SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_NO_BUTTON));
+
+        DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_NO_BUTTON);
     }
 
     /**
@@ -91,47 +93,46 @@ public class DeskControlCentral implements OnSerialPortDataListener {
      */
     public void stopImmediately() {
         isStop = true;
-        SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_STOP_IMMEDIATELY));
+        DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_STOP_IMMEDIATELY);
     }
 
     /**
      * 运行过程中回退
      */
     public void backWhenRunning() {
-        SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_BACK_WHEN_RUNNING));
-
+        DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_BACK_WHEN_RUNNING);
     }
 
     /**
      * 运行到指定高度
+     *
      * @param height 单位mm
      */
     public void runToSitHeight(int height) {
         byte[] heightBytes = new byte[2];
         heightBytes[0] = (byte) (0xff & height);
         heightBytes[1] = (byte) ((0xff00 & height) >> 8);
-        SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_RUN_TO_SPECIFIC_HEIGHT + SerialPortUtil.byte2HexString(heightBytes)));
+        DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_RUN_TO_SPECIFIC_HEIGHT + SerialPortUtil.byte2HexString(heightBytes));
     }
 
     /**
      * 获取设备信息
      */
     public void getInfo() {
-        SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_GET_DEVICE_INFO));
+        DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_GET_DEVICE_INFO);
     }
 
     /**
      * 获取控制盒状态
      */
-    public void getDeviceState(){
-        SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_GET_DEVICE_STATE));
-
+    public void getDeviceState() {
+        DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_GET_DEVICE_STATE);
     }
 
     /**
      * 停止复位
      */
-    public void stopRST(){
+    public void stopRST() {
         isStop = true;
     }
 
@@ -140,23 +141,17 @@ public class DeskControlCentral implements OnSerialPortDataListener {
      */
     public void rst() {
         isStop = false;
-        boolean isContinue = false;
         new Thread(new Runnable() {
             @Override
             public void run() {
                 //只要控制盒没有回复rst或者没有手动停止，就一直发rst
-                while(!isRST && !isStop){
-                    SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_KEY_RST));
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
+                DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_NO_BUTTON);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-                //进入复位了，发下降指令
-                while(isRST && !isStop){
-                    down();
-                }
+                DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_KEY_RST);
             }
         }).start();
     }
@@ -164,40 +159,49 @@ public class DeskControlCentral implements OnSerialPortDataListener {
 
     /**
      * 设置遇阻回退灵敏度
+     *
      * @param sensitivity
      */
     public void setSensitivity(int sensitivity) {
         switch (sensitivity) {
             case 0:
-                SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_CHANGE_SENSITIVITY_CLOSE));
+                DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_CHANGE_SENSITIVITY_CLOSE);
                 break;
             case 1:
-                SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_CHANGE_SENSITIVITY_LOW));
+                DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_CHANGE_SENSITIVITY_LOW);
                 break;
             case 2:
-                SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_CHANGE_SENSITIVITY_MID));
+                DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_CHANGE_SENSITIVITY_MID);
                 break;
             case 3:
-                SerialPortManager.getInstance().sendBytes(SerialPortUtil.packageBody(Constants.COMMAND_CHANGE_SENSITIVITY_HIGH));
+                DataProcessingCenter.getInstance().setCurrentCommand(Constants.COMMAND_CHANGE_SENSITIVITY_HIGH);
                 break;
         }
     }
 
     /**
      * 数据解析
+     *
      * @param bytes 接收到的数据
      */
     @Override
     public void onDataReceived(byte[] bytes) {
         if (currentCommand != null) {
-            if(bytes[2] == (byte)0x00 && bytes[3] == (byte)0x07){
+            if (bytes[2] == (byte) 0x00 && bytes[3] == (byte) 0x07) {
                 byte s1 = bytes[5];
                 byte s2 = bytes[6];
                 byte s3 = bytes[7];
                 String result = "";
                 if (ButtonValue.isRST(s1, s2, s3)) {
                     result = "RST";
+                    if(!isRST){
+                        stop();
+                    }
+                    Log.i("控制逻辑", "复位");
                     isRST = true;
+                    if(uiListener!=null){
+                        uiListener.showRSTState();
+                    }
                     state = STATE_RST;
                     errorCode = "";
                 } else if (ButtonValue.isBottom(s1, s2, s3)) {
@@ -208,6 +212,9 @@ public class DeskControlCentral implements OnSerialPortDataListener {
                     state = STATE_ERROR;
                     result = ButtonValue.getError(s1, s2, s3);
                     errorCode = result;
+                    if(uiListener!=null){
+                        uiListener.showError(errorCode);
+                    }
                 } else if (ButtonValue.isOFF(s1, s2, s3)) {
                     result = "电源关闭";
                 } else if (ButtonValue.isOL(s1, s2, s3)) {
@@ -223,8 +230,12 @@ public class DeskControlCentral implements OnSerialPortDataListener {
                     state = STATE_NORMAL;
                     isRST = false;
                     result = ButtonValue.getNumber(s1, s2, s3);
+
                     float number = Float.parseFloat(result);
                     currentHeight = (int) (number * 10);
+                    if(uiListener!=null){
+                        uiListener.showHeight(currentHeight);
+                    }
                     errorCode = "";
                 }
             }
@@ -236,9 +247,8 @@ public class DeskControlCentral implements OnSerialPortDataListener {
         currentCommand = bytes;
     }
 
-    @Override
-    public void onWait() {
 
+    public void setUiListener(IDeskUIListener uiListener) {
+        this.uiListener = uiListener;
     }
-
 }

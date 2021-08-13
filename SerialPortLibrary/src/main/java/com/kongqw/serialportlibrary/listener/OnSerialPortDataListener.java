@@ -21,8 +21,4 @@ public interface OnSerialPortDataListener {
      */
     void onDataSent(byte[] bytes);
 
-    /**
-     * 收发阻塞了
-     */
-    void onWait();
 }
