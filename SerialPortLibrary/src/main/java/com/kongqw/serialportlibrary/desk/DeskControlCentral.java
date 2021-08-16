@@ -35,6 +35,16 @@ public class DeskControlCentral implements OnSerialPortDataListener {
     private int minHeight = 0;
     private int sensitivity = 0;
     private String errorCode = "";
+    //是否支持童锁
+    private boolean supportChildLock = false;
+    //是否支持急停
+    private boolean supportEmergencyStop = false;
+    //是否支持显示新编码
+    private boolean supportShowNewEncode = false;
+    //是否支持IAP功能
+    private boolean supportIAP = false;
+    //是否支持遇阻回退
+    private boolean supportBack = false;
 
     public String getErrorCode() {
         return errorCode;
@@ -194,12 +204,12 @@ public class DeskControlCentral implements OnSerialPortDataListener {
                 String result = "";
                 if (ButtonValue.isRST(s1, s2, s3)) {
                     result = "RST";
-                    if(!isRST){
+                    if (!isRST) {
                         stop();
                     }
                     Log.i("控制逻辑", "复位");
                     isRST = true;
-                    if(uiListener!=null){
+                    if (uiListener != null) {
                         uiListener.showRSTState();
                     }
                     state = STATE_RST;
@@ -212,7 +222,7 @@ public class DeskControlCentral implements OnSerialPortDataListener {
                     state = STATE_ERROR;
                     result = ButtonValue.getError(s1, s2, s3);
                     errorCode = result;
-                    if(uiListener!=null){
+                    if (uiListener != null) {
                         uiListener.showError(errorCode);
                     }
                 } else if (ButtonValue.isOFF(s1, s2, s3)) {
@@ -226,16 +236,50 @@ public class DeskControlCentral implements OnSerialPortDataListener {
                     state = STATE_NORMAL;
                     result = "Top";
                     errorCode = "";
+                } else if (bytes[4] == (byte) 0x82) {
+                    if (uiListener != null) {
+                        //例 00 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19
+                        //例 9B 12 00 07 82 00 42 04 12 02 03 10 00 6E 00 64 00 74 81 9D
+                        int unit = bytes[5];//单位
+                        String max = SerialPortUtil.byte2HexString(new byte[]{bytes[7], bytes[6]});
+                        String min = SerialPortUtil.byte2HexString(new byte[]{bytes[9], bytes[8]});
+                        maxHeight = Integer.parseInt(max, 16);
+                        minHeight = Integer.parseInt(min, 16);
+                        sensitivity = bytes[10];//遇阻回退灵敏度
+                        //设备功能标志位 设备功能标志位说明，1表示支持，0表示不支持。
+                        //7：保留；6：保留；5：保留；4：是否支持IAP功能；3：新显示编码；2：遇阻回退命令；1：急停命令；0：童锁功能
+                        String functionStr = SerialPortUtil.byteToBinary(bytes[11]);//要转成二进制
+                        supportIAP = (functionStr.charAt(3) == '1');
+                        supportShowNewEncode = (functionStr.charAt(4) == '1');
+                        supportBack = (functionStr.charAt(5) == '1');
+                        supportEmergencyStop = (functionStr.charAt(6) == '1');
+                        supportChildLock = (functionStr.charAt(7) == '1');
+                        String encode = SerialPortUtil.byte2HexString(new byte[]{bytes[13], bytes[12]});//软件编码
+                        String version = SerialPortUtil.byte2HexString(new byte[]{bytes[15], bytes[14]});
+                        int encodeInt = Integer.parseInt(encode, 16);
+                        int v = Integer.parseInt(version, 16);
+                        result = "单位：" + unit + "  maxHeight = " + maxHeight +
+                                "  minHeight = " + minHeight + " sensitivity = " + sensitivity +
+                                " function { " + "支持IAP = " + supportIAP + "，支持新编码 = " + supportShowNewEncode + "，遇阻回退 = " + supportBack + "，急停 = " + supportEmergencyStop + "，童锁 = " + supportChildLock + "}  " +
+                                "编码 = " + encodeInt + " 版本 = " + v;
+                        Log.d("控制逻辑", result);
+                        uiListener.showDeviceInfo(result);
+                    }
                 } else {
                     state = STATE_NORMAL;
                     isRST = false;
                     result = ButtonValue.getNumber(s1, s2, s3);
 
-                    float number = Float.parseFloat(result);
-                    currentHeight = (int) (number * 10);
-                    if(uiListener!=null){
-                        uiListener.showHeight(currentHeight);
+                    try {
+                        float number = Float.parseFloat(result);
+                        currentHeight = (int) (number * 10);
+                        if (uiListener != null) {
+                            uiListener.showHeight(currentHeight);
+                        }
+                    } catch (NumberFormatException e) {
+                        e.printStackTrace();
                     }
+
                     errorCode = "";
                 }
             }

@@ -82,42 +82,16 @@ public class SerialPortUtil {
     private static byte charToByte(char c) {
         return (byte) "0123456789ABCDEF".indexOf(c);
     }
-
-
-    //分割数据包
-    public static byte[][] splitData(byte[] data) {
-        String originData = byte2HexString(data);
-        String replaceStr = originData.toUpperCase();
-        //处理转义字符
-        replaceStr = replaceStr.replace("5C9B", "@");
-
-        if (replaceStr.contains("5C9D9B")) {
-            //这种情况就是校验位最后一位是5C的情况，这种情况5C9D就不需要转义
-        } else {
-            replaceStr = replaceStr.replace("5C9D", "#");
+    //字节转二进制字符串
+    public static String byteToBinary(byte aByte) {
+        String text = Integer.toBinaryString(aByte);
+        int sub = 8 - text.length();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < sub; i++) {
+            sb.append("0");
         }
-        String[] splits = replaceStr.split("9B");
-        if (splits.length == 0) {
-            return new byte[0][];
-        }
-        byte[][] result = new byte[splits.length][];
-        for (int i = 0; i < splits.length; i++) {
-            String item = "";
-            if (i == 0) {
-                if (originData.startsWith("9B")) {
-                    item = "9B" + splits[i];
-                }
-            } else {
-                item = "9B" + splits[i];
-            }
-
-            if (item.startsWith("9B") && item.endsWith("9D")) {
-                item = item.replace("@", "9B");
-                item = item.replace("#", "9D");
-                result[i] = hexStringBytes(item);
-            }
-        }
-
-        return result;
+        sb.append(text);
+        return sb.toString();
     }
+
 }
