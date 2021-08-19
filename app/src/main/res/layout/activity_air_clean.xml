@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:gravity="center"
+	android:orientation="horizontal">
+
+	<LinearLayout
+		android:layout_width="0dp"
+		android:layout_height="match_parent"
+		android:layout_weight="1"
+		android:gravity="center_vertical"
+		android:orientation="vertical">
+
+		<Button
+			android:id="@+id/btn_get_state"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:padding="10dp"
+			android:text="查询状态"
+			android:textSize="20sp" />
+
+		<LinearLayout
+			android:layout_marginTop="10dp"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center_vertical"
+			android:orientation="horizontal">
+
+			<Button
+				android:id="@+id/btn_gear_close"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="10dp"
+				android:text="关"
+				android:textSize="20sp" />
+
+			<Button
+				android:id="@+id/btn_gear_smart"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="10dp"
+				android:text="智能"
+				android:textSize="20sp" />
+
+			<Button
+				android:id="@+id/btn_gear_1"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="10dp"
+				android:text="1档"
+				android:textSize="20sp" />
+
+			<Button
+				android:id="@+id/btn_gear_2"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="10dp"
+				android:textSize="20sp"
+				android:text="2档" />
+
+
+		</LinearLayout>
+		<LinearLayout
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_gravity="center_vertical"
+			android:orientation="horizontal">
+			<Button
+				android:id="@+id/btn_gear_3"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="10dp"
+				android:text="3档"
+				android:textSize="20sp" />
+			<Button
+				android:id="@+id/btn_gear_4"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="10dp"
+				android:text="4档"
+				android:textSize="20sp" />
+
+			<Button
+				android:id="@+id/btn_gear_5"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:padding="10dp"
+				android:text="5档"
+				android:textSize="20sp" />
+
+		</LinearLayout>
+		<Switch
+			android:layout_marginTop="10dp"
+			android:id="@+id/btn_uv_change"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:checked="false"
+			android:padding="10dp"
+			android:text="紫外灯"
+			android:textOff="紫外灯关"
+			android:textOn="紫外灯开"
+			android:textSize="20sp" />
+
+		<Button
+			android:layout_marginTop="10dp"
+			android:id="@+id/btn_reset_filter_screen_life"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:padding="10dp"
+			android:text="重置滤网寿命"
+			android:textSize="20sp" />
+
+		<Switch
+			android:layout_marginTop="10dp"
+			android:id="@+id/btn_sleep_wakeup"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:padding="10dp"
+			android:text="休眠/唤醒"
+			android:textOff="休眠"
+			android:textOn="唤醒"
+			android:textSize="20sp" />
+
+	</LinearLayout>
+
+
+	<TextView
+		android:id="@+id/tv_result"
+		android:layout_width="0dp"
+		android:layout_height="match_parent"
+		android:gravity="center_vertical"
+		android:layout_weight="1"
+		android:padding="10dp"
+		android:textSize="20sp" />
+</LinearLayout>

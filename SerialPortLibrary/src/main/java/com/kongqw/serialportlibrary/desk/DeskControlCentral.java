@@ -6,7 +6,6 @@ import android.util.Log;
 import com.kongqw.serialportlibrary.DataProcessingCenter;
 import com.kongqw.serialportlibrary.SerialPortManager;
 import com.kongqw.serialportlibrary.SerialPortUtil;
-import com.kongqw.serialportlibrary.desk.callback.IDeskCallback;
 import com.kongqw.serialportlibrary.desk.callback.IDeskUIListener;
 import com.kongqw.serialportlibrary.listener.OnSerialPortDataListener;
 
@@ -73,7 +72,6 @@ public class DeskControlCentral implements OnSerialPortDataListener {
     }
 
 
-    private IDeskCallback callback;
 
     /**
      * 向上

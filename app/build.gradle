@@ -30,4 +30,5 @@ dependencies {
     implementation libs.appcompat_v7
     implementation libs.constraintLayout
     implementation project(path: ':SerialPortLibrary')
+    implementation 'com.android.support:appcompat-v7:27.1.1'
 }

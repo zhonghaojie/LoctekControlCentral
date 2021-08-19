@@ -226,7 +226,7 @@ public class SerialPortManager extends SerialPort {
     private byte[] buffer = new byte[40];
 
     private void checkData(byte[] receivedData) {
-
+        Log.d("读取数据", "原始数据 " + SerialPortUtil.byte2HexString(receivedData));
         byte[] item = new byte[1];
         for (byte datum : receivedData) {
             item[0] = datum;

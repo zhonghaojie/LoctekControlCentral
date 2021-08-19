@@ -22,7 +22,7 @@ import com.kongqw.serialportlibrary.desk.callback.IDeskUIListener;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements IDeskUIListener {
+public class DeskActivity extends AppCompatActivity implements IDeskUIListener {
 
     String[] permissions = new String[]{
             Manifest.permission.READ_PHONE_STATE,
@@ -59,7 +59,6 @@ public class MainActivity extends AppCompatActivity implements IDeskUIListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        open();
         tv = findViewById(R.id.tv_show);
         DeskControlCentral.getInstance().setUiListener(this);
         findViewById(R.id.btn_info).setOnTouchListener(new View.OnTouchListener() {
@@ -132,16 +131,7 @@ public class MainActivity extends AppCompatActivity implements IDeskUIListener {
 
     }
 
-    private void open() {
-        SerialPortFinder serialPortFinder = new SerialPortFinder();
-        ArrayList<Device> devices = serialPortFinder.getDevices();
-        for (Device obj : devices) {
-            Log.d("device===", obj.getName() + "..." + obj.getRoot());
-            if (TextUtils.equals(obj.getName(), "ttyS5")) {
-                SerialPortManager.getInstance().openSerialPort(obj.getFile(), 9600);
-            }
-        }
-    }
+
 
     @Override
     public void showHeight(final int height) {
